@@ -39,6 +39,3 @@ python train.py --cfg models/LMA_yolo.yaml --data data/dataset.yaml --epochs 200
 
 Validate the performance of the trained model: </br>
 python val.py --weights runs/detect/train/weights/best.pt --data data/dataset.yaml --img 640 --batch 16 --device 0
-Perform inference on real data
-
-Let me know if you also want this formatted for a presentation, documentation, or paper.
