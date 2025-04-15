@@ -32,12 +32,12 @@ dataset/ </br>
 Define a custom YAML configuration file (specifying model architecture and hyperparameters)
 Example:
 
-Run the training script:
+Run the training script: </br>
 python train.py --cfg models/LMA_yolo.yaml --data data/dataset.yaml --epochs 200 --batch 16 --img 640 --device 0
 
 ## Step 4: Model Evaluation and Inference
 
-Validate the performance of the trained model:
+Validate the performance of the trained model: </br>
 python val.py --weights runs/detect/train/weights/best.pt --data data/dataset.yaml --img 640 --batch 16 --device 0
 Perform inference on real data
 
