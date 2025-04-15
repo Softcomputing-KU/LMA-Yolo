@@ -19,13 +19,13 @@ Prepare the dataset images and labels (in YOLO format .txt files)
 
 Check and configure the dataset directory structure as follows:
 
-dataset/
-├── images/
-│   ├── train/
-│   └── val/
-└── labels/
-    ├── train/
-    └── val/
+dataset/ </br>
+├── images/ </br>
+│   ├── train/</br>
+│   └── val/</br>
+└── labels/</br>
+    ├── train/</br>
+    └── val/</br>
     
 ## Step 3: Model Configuration and Training
 
