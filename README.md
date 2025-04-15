@@ -10,7 +10,7 @@ Configure the Python and PyTorch environment (Python ≥ 3.8, PyTorch ≥ 2.0 re
 
 Set up the YOLO-based environment (install ultralytics and required dependencies)
 
-pip install ultralytics
+pip install ultralytics </br>
 pip install -r requirements.txt
 
 ## Step 2: Data Preparation
