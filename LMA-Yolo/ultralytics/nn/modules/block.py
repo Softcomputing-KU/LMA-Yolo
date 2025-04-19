@@ -5,12 +5,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad, MPConv
+from .conv import Conv, DWConv, GhostConv, LightConv, RepConv, autopad, SPConv
 from .transformer import TransformerBlock
 
 __all__ = (
     'DFL', 'HGBlock', 'HGStem', 'SPP', 'SPPF', 'C1', 'C2', 'C3', 'C2f', 'C3x', 'C3TR', 'C3Ghost','C2ff', 'GhostBottleneck',
-    'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3','MultiAttenCat','MyC2f','MyModule','LSKA','SPPF_LSKA','EMA','GMC','CARAFE','GlobalContext','C2f_FBCA','C2f_MPConv'
+    'Bottleneck', 'BottleneckCSP', 'Proto', 'RepC3','MultiAttenCat','MyC2f','MyModule','LSKA','SPPF_LSKA','EMA','EDA','GlobalContext','C2f_SPConv'
 )
 
 
@@ -1100,9 +1100,9 @@ import torch
 import torch.nn as nn
 from efficientnet_pytorch.model import MemoryEfficientSwish
 
-class LightweightGAM_Attention(nn.Module):
+class LGSAM(nn.Module):
     def __init__(self, in_channels, rate=8):
-        super(LightweightGAM_Attention, self).__init__()
+        super(LGSAM, self).__init__()
         
         self.channel_attention = nn.Sequential(
             nn.Linear(in_channels, in_channels // rate),
@@ -1131,7 +1131,7 @@ class LightweightGAM_Attention(nn.Module):
         
         return out
 
-class LightweightEfficientAttention(nn.Module):
+class LMHA(nn.Module):
     def __init__(self, dim, num_heads=4, group_split=[2, 2], kernel_sizes=[5], window_size=4, 
                  attn_drop=0., proj_drop=0., qkv_bias=True):
         super().__init__()
@@ -1163,12 +1163,12 @@ class LightweightEfficientAttention(nn.Module):
         
         return x
 
-class GMC(nn.Module):
+class EDA(nn.Module):
     def __init__(self, in_channels, num_heads=4, group_split=None, kernel_sizes=None, window_size=4, 
                  attn_drop=0., proj_drop=0., qkv_bias=True, gam_rate=8):
-        super(GMC, self).__init__()
+        super(EDA, self).__init__()
         
-        self.gam = LightweightGAM_Attention(in_channels, rate=gam_rate)
+        self.gam = LGSAM(in_channels, rate=gam_rate)
         
         if isinstance(group_split, int):
             group_split = [group_split, num_heads - group_split]
@@ -1182,7 +1182,7 @@ class GMC(nn.Module):
         
         assert sum(group_split) == num_heads, f"Sum of group_split {sum(group_split)} must equal num_heads {num_heads}"
         
-        self.efficient_attn = LightweightEfficientAttention(in_channels, num_heads, group_split, kernel_sizes, 
+        self.efficient_attn = LMHA(in_channels, num_heads, group_split, kernel_sizes, 
                                                            window_size, attn_drop, proj_drop, qkv_bias)
         
         # 减少通道数，然后再融合
@@ -1199,23 +1199,6 @@ class GMC(nn.Module):
         
         return out
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
     
     
     
@@ -1241,107 +1224,6 @@ class Star_Block(nn.Module):
 
 
 
-
-class C2f_DWCA(nn.Module):
-    """Faster Implementation of CSP Bottleneck with 2 convolutions."""
-
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
-        """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
-        expansion.
-        """
-        super().__init__()
-        self.c = int(c2 * e)  # hidden channels
-        self.cv1 = GhostConv(c1, 2 * self.c, 1, 1)
-        self.cv2 = GhostConv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
-        self.attention = CoordAtt(c2)
-
-    def forward(self, x):
-        """Forward pass through C2f layer."""
-        y = list(self.attention(self.cv1(x)).chunk(2, 1))
-        y.extend(m(y[-1]) for m in self.m)
-        return self.cv2(torch.cat(y, 1))
-
-    def forward_split(self, x):
-        """Forward pass using split() instead of chunk()."""
-        y = list(self.cv1(x).split((self.c, self.c), 1))
-        y.extend(m(y[-1]) for m in self.m)
-        return self.cv2(torch.cat(y, 1))
-
-
-
-
-
-
-
-
-
-class C2f_SDWCA(C2f_DWCA):
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
-        super().__init__(c1, c2, n, shortcut, g, e)
-        self.m = nn.ModuleList(Star_Block(self.c) for _ in range(n))
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-#CARAFE
-class CARAFE(nn.Module):
-    def __init__(self, c, k_enc=3, k_up=5, c_mid=64, scale=2):
-        """ The unofficial implementation of the CARAFE module.
-        The details are in "https://arxiv.org/abs/1905.02188".
-        Args:
-            c: The channel number of the input and the output.
-            c_mid: The channel number after compression.
-            scale: The expected upsample scale.
-            k_up: The size of the reassembly kernel.
-            k_enc: The kernel size of the encoder.
-        Returns:
-            X: The upsampled feature map.
-        """
-        super(CARAFE, self).__init__()
-        self.scale = scale
-
-        self.comp = Conv(c, c_mid)
-        self.enc = Conv(c_mid, (scale*k_up)**2, k=k_enc, act=False)
-        self.pix_shf = nn.PixelShuffle(scale)
-
-        self.upsmp = nn.Upsample(scale_factor=scale, mode='nearest')
-        self.unfold = nn.Unfold(kernel_size=k_up, dilation=scale, 
-                                padding=k_up//2*scale)
-
-    def forward(self, X):
-        b, c, h, w = X.size()
-        h_, w_ = h * self.scale, w * self.scale
-        
-        W = self.comp(X)                                # b * m * h * w
-        W = self.enc(W)                                 # b * 100 * h * w
-        W = self.pix_shf(W)                             # b * 25 * h_ * w_
-        W = torch.softmax(W, dim=1)                         # b * 25 * h_ * w_
-
-        X = self.upsmp(X)                               # b * c * h_ * w_
-        X = self.unfold(X)                              # b * 25c * h_ * w_
-        X = X.view(b, c, -1, h_, w_)                    # b * 25 * c * h_ * w_
-
-        X = torch.einsum('bkhw,bckhw->bchw', [W, X])    # b * c * h_ * w_
-        return X
-    
-    
-    
-    
-    
-    
-    
     
     
     
@@ -1413,284 +1295,7 @@ if __name__ == '__main__':
     print(output.shape)
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-#
-#C2f-FBCA
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-class h_sigmoid(nn.Module):
-    def __init__(self, inplace=True):
-        super(h_sigmoid, self).__init__()
-        self.relu = nn.ReLU6(inplace=inplace)
-
-    def forward(self, x):
-        return self.relu(x + 3) / 6
-
-
-class h_swish(nn.Module):
-    def __init__(self, inplace=True):
-        super(h_swish, self).__init__()
-        self.sigmoid = h_sigmoid(inplace=inplace)
-
-    def forward(self, x):
-        return x * self.sigmoid(x)
-
-
-class CoordAtt(nn.Module):
-    def __init__(self, inp, reduction=32):
-        super(CoordAtt, self).__init__()
-        self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
-        self.pool_w = nn.AdaptiveAvgPool2d((1, None))
-
-        mip = max(8, inp // reduction)
-
-        self.conv1 = nn.Conv2d(inp, mip, kernel_size=1, stride=1, padding=0)
-        self.bn1 = nn.BatchNorm2d(mip)
-        self.act = h_swish()
-
-        self.conv_h = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
-        self.conv_w = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        identity = x
-
-        n, c, h, w = x.size()
-        x_h = self.pool_h(x)
-        x_w = self.pool_w(x).permute(0, 1, 3, 2)
-
-        y = torch.cat([x_h, x_w], dim=2)
-        y = self.conv1(y)
-        y = self.bn1(y)
-        y = self.act(y)
-
-        x_h, x_w = torch.split(y, [h, w], dim=2)
-        x_w = x_w.permute(0, 1, 3, 2)
-
-        a_h = self.conv_h(x_h).sigmoid()
-        a_w = self.conv_w(x_w).sigmoid()
-
-        out = identity * a_w * a_h
-
-        return out
-
-if __name__ == '__main__':
-    input = torch.randn(50, 512, 7, 7)
-    pna = CoordAtt(inp=512)
-    output = pna(input)
-    print(output.shape)
-
-
-
-
-
-
-
-
-# 复制一个c2f模块
-class C2f_CoordAtt(nn.Module):
-    """Faster Implementation of CSP Bottleneck with 2 convolutions."""
-
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
-        """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
-        expansion.
-        """
-        super().__init__()
-        self.c = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
-        self.attention = CoordAtt(c2)
-
-    def forward(self, x):
-        """Forward pass through C2f layer."""
-        y = list(self.attention(self.cv1(x)).chunk(2, 1))
-        y.extend(m(y[-1]) for m in self.m)
-        return self.cv2(torch.cat(y, 1))
-
-    def forward_split(self, x):
-        """Forward pass using split() instead of chunk()."""
-        y = list(self.cv1(x).split((self.c, self.c), 1))
-        y.extend(m(y[-1]) for m in self.m)
-        return self.cv2(torch.cat(y, 1))
-
-
-
-
-
-
-
-from timm.models.layers import DropPath
-class Partial_conv3(nn.Module):
-    def __init__(self, dim, n_div=4, forward='split_cat'):
-        super().__init__()
-        self.dim_conv3 = dim // n_div
-        self.dim_untouched = dim - self.dim_conv3
-        self.partial_conv3 = nn.Conv2d(self.dim_conv3, self.dim_conv3, 3, 1, 1, bias=False)
-
-        if forward == 'slicing':
-            self.forward = self.forward_slicing
-        elif forward == 'split_cat':
-            self.forward = self.forward_split_cat
-        else:
-            raise NotImplementedError
-
-    def forward_slicing(self, x):
-        # only for inference
-        x = x.clone()   # !!! Keep the original input intact for the residual connection later
-        x[:, :self.dim_conv3, :, :] = self.partial_conv3(x[:, :self.dim_conv3, :, :])
-        return x
-
-    def forward_split_cat(self, x):
-        # for training/inference
-        x1, x2 = torch.split(x, [self.dim_conv3, self.dim_untouched], dim=1)
-        x1 = self.partial_conv3(x1)
-        x = torch.cat((x1, x2), 1)
-        return x
-
-
-
-class Faster_Block(nn.Module):
-    def __init__(self,
-                 inc,
-                 dim,
-                 n_div=4,
-                 mlp_ratio=2,
-                 drop_path=0.1,
-                 layer_scale_init_value=0.0,
-                 pconv_fw_type='split_cat'
-                 ):
-        super().__init__()
-        self.dim = dim
-        self.mlp_ratio = mlp_ratio
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.n_div = n_div
-
-        mlp_hidden_dim = int(dim * mlp_ratio)
-
-        mlp_layer = [
-            Conv(dim, mlp_hidden_dim, 1),
-            nn.Conv2d(mlp_hidden_dim, dim, 1, bias=False)
-        ]
-
-        self.mlp = nn.Sequential(*mlp_layer)
-
-        self.spatial_mixing = Partial_conv3(
-            dim,
-            n_div,
-            pconv_fw_type
-        )
-
-        self.adjust_channel = None
-        if inc != dim:
-            self.adjust_channel = Conv(inc, dim, 1)
-
-        if layer_scale_init_value > 0:
-            self.layer_scale = nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
-            self.forward = self.forward_layer_scale
-        else:
-            self.forward = self.forward
-
-    def forward(self, x):
-        if self.adjust_channel is not None:
-            x = self.adjust_channel(x)
-        shortcut = x
-        x = self.spatial_mixing(x)
-        x = shortcut + self.drop_path(self.mlp(x))
-        return x
-
-    def forward_layer_scale(self, x):
-        shortcut = x
-        x = self.spatial_mixing(x)
-        x = shortcut + self.drop_path(
-            self.layer_scale.unsqueeze(-1).unsqueeze(-1) * self.mlp(x))
-        return x
-
-
-class Faster_Block_CA(nn.Module):
-    def __init__(self,
-                 inc,
-                 dim,
-                 n_div=4,
-                 mlp_ratio=2,
-                 drop_path=0.1,
-                 layer_scale_init_value=0.0,
-                 pconv_fw_type='split_cat'
-                 ):
-        super().__init__()
-        self.dim = dim
-        self.mlp_ratio = mlp_ratio
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
-        self.n_div = n_div
-
-        mlp_hidden_dim = int(dim * mlp_ratio)
-
-        mlp_layer = [
-            Conv(dim, mlp_hidden_dim, 1),
-            nn.Conv2d(mlp_hidden_dim, dim, 1, bias=False)
-        ]
-
-        self.mlp = nn.Sequential(*mlp_layer)
-
-        self.spatial_mixing = Partial_conv3(
-            dim,
-            n_div,
-            pconv_fw_type
-        )
-        self.attention = CoordAtt(dim)
-
-        self.adjust_channel = None
-        if inc != dim:
-            self.adjust_channel = Conv(inc, dim, 1)
-
-        if layer_scale_init_value > 0:
-            self.layer_scale = nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
-            self.forward = self.forward_layer_scale
-        else:
-            self.forward = self.forward
-
-    def forward(self, x):
-        if self.adjust_channel is not None:
-            x = self.adjust_channel(x)
-        shortcut = x
-        x = self.spatial_mixing(x)
-        x = shortcut + self.attention(self.drop_path(self.mlp(x)))
-        return x
-
-    def forward_layer_scale(self, x):
-        shortcut = x
-        x = self.spatial_mixing(x)
-        x = shortcut + self.drop_path(self.layer_scale.unsqueeze(-1).unsqueeze(-1) * self.mlp(x))
-        return x
-
-    
-      
-    
-class C2f_FBCA(C2f_CoordAtt):
-    def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
-        super().__init__(c1, c2, n, shortcut, g, e)
-        self.m = nn.ModuleList(Faster_Block_CA(self.c, self.c) for _ in range(n))
-        
-        
-        
-        
-        
-        
-        
-        
-        
+     
 class SPPF(nn.Module):
     """Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher."""
 
@@ -1718,15 +1323,15 @@ class SPPF(nn.Module):
     
     
     
-#C2f_MPConv  
+#C2f_SPConv
 
 
 
-class C2f_MPConv(nn.Module):
+class C2f_SPConv(nn.Module):
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__()
         self.c = int(c2 * e)  # hidden channels
-        self.cv1 = MPConv(c1, 2 * self.c)
+        self.cv1 = SPConv(c1, 2 * self.c)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)
         self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
 
@@ -1787,7 +1392,41 @@ class Star_Block(nn.Module):
 
 
 
-class C2f_SD(C2f_DWConv):
+class C2f_ST(C2f_DWConv):
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         super().__init__(c1, c2, n, shortcut, g, e)
         self.m = nn.ModuleList(Star_Block(self.c) for _ in range(n))
+        
+
+
+class LMHA(nn.Module):
+    def __init__(self, dim, num_heads=4, group_split=[2, 2], kernel_sizes=[5], window_size=4, 
+                 attn_drop=0., proj_drop=0., qkv_bias=True):
+        super().__init__()
+        self.dim = dim
+        self.num_heads = num_heads
+        self.dim_head = dim // num_heads
+        self.scalor = self.dim_head ** -0.5
+        self.kernel_sizes = kernel_sizes
+        self.window_size = window_size
+        self.group_split = group_split
+
+        self.qkv = nn.Conv2d(dim, dim * 3, 1, bias=qkv_bias)
+        self.proj = nn.Conv2d(dim, dim, 1, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+    def forward(self, x):
+        b, c, h, w = x.shape
+        qkv = self.qkv(x).reshape(b, 3, self.num_heads, self.dim_head, h, w).permute(1, 0, 2, 4, 5, 3)
+        q, k, v = qkv
+        
+        attn = (q @ k.transpose(-2, -1)) * self.scalor
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+        
+        x = (attn @ v).transpose(2, 3).reshape(b, c, h, w)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        
+        return x

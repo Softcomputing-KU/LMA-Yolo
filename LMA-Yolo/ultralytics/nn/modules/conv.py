@@ -22,7 +22,7 @@ __all__ = (
     "Concat",
     "RepConv",
     "MultiScaleConv",
-    "MPConv"
+    "SPConv"
 )
 
 
@@ -342,8 +342,8 @@ class Concat(nn.Module):
     
     
     
-import torch
-import torch.nn as nn
+# import torch
+# import torch.nn as nn
 
 class MultiScaleConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
@@ -360,8 +360,61 @@ class MultiScaleConv(nn.Module):
         bn_out = self.bn(combined_out)
         output = self.silu(bn_out)
         return output
+import torch
+import torch.nn as nn
 
-    
+# class SEBlock(nn.Module):
+#     def __init__(self, channels, reduction=4):
+#         super(SEBlock, self).__init__()
+#         self.avg_pool = nn.AdaptiveAvgPool2d(1)
+#         self.fc = nn.Sequential(
+#             nn.Linear(channels, channels // reduction),
+#             nn.ReLU(inplace=True),
+#             nn.Linear(channels // reduction, channels),
+#             nn.Sigmoid()
+#         )
+
+#     def forward(self, x):
+#         b, c, _, _ = x.size()
+#         y = self.avg_pool(x).view(b, c)
+#         y = self.fc(y).view(b, c, 1, 1)
+#         return x * y.expand_as(x)
+
+# class MultiScaleConv(nn.Module):
+#     """
+#     3×3 + 5×5 并行卷积 → SE → BN → SiLU
+#     兼容 Ultralytics YAML 调用顺序：MultiScaleConv(in_ch, out_ch, k=3, stride=1, reduction=4)
+#     """
+#     def __init__(self, in_channels, out_channels,
+#                  k=3, stride=1, reduction=4):        # k 仅占位，让参数数量对齐
+#         super().__init__()
+
+#         # 并行卷积
+#         self.conv3 = nn.Conv2d(in_channels, out_channels // 2, 3, stride, 1)
+#         self.conv5 = nn.Conv2d(in_channels, out_channels // 2, 5, stride, 2)
+
+#         # SEBlock，防止 mid_ch=0
+#         mid_ch = max(1, out_channels // reduction)
+#         self.se = nn.Sequential(
+#             nn.AdaptiveAvgPool2d(1),
+#             nn.Flatten(),
+#             nn.Linear(out_channels, mid_ch, bias=False),
+#             nn.ReLU(inplace=True),
+#             nn.Linear(mid_ch, out_channels, bias=False),
+#             nn.Sigmoid()
+#         )
+
+#         self.bn   = nn.BatchNorm2d(out_channels)
+#         self.act  = nn.SiLU()
+
+#     def forward(self, x):
+#         x = torch.cat((self.conv3(x), self.conv5(x)), 1)
+#         # SE
+#         w = self.se(x).view(x.size(0), -1, 1, 1)
+#         x = x * w
+#         # BN + Activation
+#         return self.act(self.bn(x))
+
     
     
     
@@ -380,7 +433,7 @@ import torch.nn.functional as F
 
 
 
-class MPConv(nn.Module):
+class SPConv(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, p=None):
         super().__init__()
         self.conv = nn.Conv2d(c1, c2, k, s, self.autopad(k, p))

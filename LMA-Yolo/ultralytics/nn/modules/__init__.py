@@ -45,7 +45,7 @@ from .block import (
     RepC3,
     RepNCSPELAN4,
     ResNetLayer,
-    Silence, SPPF_LSKA, LSKA, C2ff, MyC2f, MyModule, mySWin, MultiAttenCat,EMA,GMC,CARAFE,GlobalContext,C2f_FBCA,C2f_MPConv,C2f_DWConv,Star_Block,C2f_SD
+    Silence, SPPF_LSKA, LSKA, C2ff, MyC2f, MyModule, mySWin, MultiAttenCat,EMA,EDA,GlobalContext,C2f_SPConv,C2f_DWConv,Star_Block,C2f_ST
 )
 from .conv import (
     CBAM,
@@ -60,7 +60,7 @@ from .conv import (
     GhostConv,
     LightConv,
     RepConv,
-    SpatialAttention,MultiScaleConv,MPConv
+    SpatialAttention,MultiScaleConv,SPConv
 )
 from .head import OBB, Classify, Detect, Pose, RTDETRDecoder, Segment, WorldDetect
 from .transformer import (
@@ -135,7 +135,7 @@ __all__ = (
     "CBFuse",
     "CBLinear",
     "Silence",
-    'C2ff', 'MSDeformAttn', 'MLP','LSKA','SPPF_LSKA','MyC2f','MyModule','mySWin','MultiAttenCat','EMA','GMC','MultiScaleConv',"CARAFE","GlobalContext",'C2f_FBCA','MPConv','C2f_MPConv'
+        'C2ff', 'MSDeformAttn', 'MLP','LSKA','SPPF_LSKA','MyC2f','MyModule','mySWin','MultiAttenCat','EMA','EDA','MultiScaleConv',"CARAFE","GlobalContext",'SPConv','C2f_SPConv'
 )
 
 # __all__ = [

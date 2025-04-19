@@ -49,7 +49,7 @@ from ultralytics.nn.modules import (
     Segment,
     Silence,
     WorldDetect,
-    C2ff, MSDeformAttn, MLP,LSKA,SPPF_LSKA,MyC2f,MyModule,mySWin,MultiAttenCat,EMA,GMC,MultiScaleConv,CARAFE,GlobalContext,C2f_FBCA,MPConv,C2f_MPConv,C2f_DWConv,Star_Block,C2f_SD
+    C2ff, MSDeformAttn, MLP,LSKA,SPPF_LSKA,MyC2f,MyModule,mySWin,MultiAttenCat,EMA,EDA,MultiScaleConv,GlobalContext,SPConv,C2f_SPConv,C2f_DWConv,Star_Block,C2f_ST
 )
 
 from ultralytics.utils import DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, colorstr, emojis, yaml_load
@@ -889,7 +889,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             DWConvTranspose2d,
             C3x,
             RepC3,
-            MyC2f, MyModule, C2ff, mySWin, LSKA, SPPF_LSKA,EMA,GMC,MultiScaleConv,GlobalContext,C2f_FBCA,MPConv,C2f_MPConv,C2f_DWConv,Star_Block,C2f_SD
+            MyC2f, MyModule, C2ff, mySWin, LSKA, SPPF_LSKA,EMA,EDA,MultiScaleConv,GlobalContext,SPConv,C2f_SPConv,C2f_DWConv,Star_Block,C2f_ST
 
         }:
             c1, c2 = ch[f], args[0]
@@ -932,11 +932,6 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [c1, c2]
         elif m is attention_model:
             args = [ch[f[-1]]]
-            
-            
-        elif m in {CARAFE}:
-            c2 = ch[f]
-            args = [c2, *args]
             
         elif m is Concat:
             c2 = sum(ch[x] for x in f)

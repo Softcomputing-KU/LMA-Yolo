@@ -1,0 +1,24 @@
+# === Core Deep Learning Stack ===
+torch==2.0.0+cu118
+torchvision==0.15.1+cu118
+torchaudio==2.4.1+cu118
+
+# === YOLOv8 Framework ===
+ultralytics==8.0.0
+
+# === Visualization & I/O ===
+opencv-python==4.11.0.86
+matplotlib==3.7.5
+seaborn==0.13.2
+pillow==10.2.0
+
+# === Utility & Data Handling ===
+numpy==1.24.4
+pandas==2.0.3
+PyYAML==6.0.2
+tqdm==4.67.1
+scipy==1.10.1
+
+# === Others (optional but used in your code) ===
+thop==0.1.1.post2209072238  # model FLOPs & params
+timm==0.6.13                # for backbone or attention
