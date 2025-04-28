@@ -1,6 +1,6 @@
-LMA-YOLO 
+## LMA-YOLO 
 
-An improved YOLOv8-based object detection model with multi-scale and lightweight attention mechanisms, specifically designed for remote sensing scenarios.
+# An improved YOLOv8-based object detection model with multi-scale and lightweight attention mechanisms, specifically designed for remote sensing scenarios.
 
 🔧 Highlights
 
@@ -28,7 +28,7 @@ datasets/ROSD/
 
  Usage Guide
 
-🔧 1. Train the Model
+# 🔧 1. Train the Model
 
 To train the improved YOLO model with your custom configuration and dataset:
 
@@ -73,7 +73,7 @@ Training results (weights, logs, metrics) will be saved in:
 
 runs/detect/LMA-YOLO/
 
- 2. Run Inference (Prediction)
+# 2. Run Inference (Prediction)
 
 To run inference using a trained model:
 
@@ -125,7 +125,7 @@ YOLO-format label files (optional)
 
 Confidence values for detections (optional)
 
- 3. Validate the Model (Optional)
+# 3. Validate the Model (Optional)
 
 To evaluate the trained model on the validation set:
 
